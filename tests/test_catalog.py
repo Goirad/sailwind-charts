@@ -25,3 +25,15 @@ def test_to_render_skips_members_and_skipped():
 def test_unknown_island_gets_a_blank_entry():
     entry = Catalog.load().island('island 999 nowhere')
     assert entry.title == 'island 999 nowhere' and not entry.quirks and not entry.skip
+
+
+def test_cutout_quirks_are_valid_polygons():
+    import shapely
+    for key, entry in Catalog.load().islands.items():
+        cutout = entry.quirks.get('cutout')
+        if not cutout:
+            continue
+        assert cutout['roof'], f'{key}: a cutout needs the names of the roof meshes'
+        for ring in cutout['regions']:
+            poly = shapely.Polygon(ring)
+            assert len(ring) >= 3 and poly.is_valid and poly.area > 0, f'{key}: bad cutout region'

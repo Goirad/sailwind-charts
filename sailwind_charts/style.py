@@ -14,6 +14,11 @@ NODATA_COLOR = '#d4d4d4'
 SCENERY_COLORS = {'trees': '#1b5e20', 'bushes': '#9ccc65'}
 STRUCT_FILL, STRUCT_EDGE = '#c62828', '#4a0a0a'
 SUBMERGED_FILL = '#f4b4b0'
+# a cut-away roof (tunnel) is marked by a dashed edge with ticks into the hill: line work only, so the water keeps its colours
+COVER_EDGE = '#4a3b22'
+COVER_STEP_M, COVER_PROBE_M = 1.0, 3.0          # edge sampling step; how far outside the edge to look for land
+COVER_TICK_M, COVER_TICK_SPACING_M = 9.0, 11.0
+COVER_LINE_PX = 6                               # design px of the dashed edge and the ticks
 
 # contour colours and widths (design px at 10,000 px)
 C_FINE, C_MED, C_LAND, C_DEEP = '#17406b', '#0a2748', '#6b4a1f', '#cfe3f3'

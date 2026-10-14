@@ -54,6 +54,55 @@ def raster(*a):
     return _RASTER(*a)
 
 
+def _make_cavity_raster():
+    from numba import njit
+
+    @njit(cache=True)
+    def raster_cavity(V, T, x0, z0, res, mode, limit, out):
+        """
+        Top-down, but for hollow meshes.  mode 0: out = highest UP-facing surface below `limit` (a cavity's floor);
+        mode 1: out = lowest DOWN-facing surface (a roof's underside; `out` starts at +inf, `limit` is ignored).
+        """
+        H, W = out.shape
+        for k in range(T.shape[0]):
+            a, b, c = V[T[k, 0]], V[T[k, 1]], V[T[k, 2]]
+            ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2])
+            if (mode == 0 and ny <= 0) or (mode == 1 and ny >= 0):
+                continue
+            minx = min(a[0], b[0], c[0]); maxx = max(a[0], b[0], c[0])
+            minz = min(a[2], b[2], c[2]); maxz = max(a[2], b[2], c[2])
+            i0 = max(int(math.floor((minx - x0) / res)), 0); i1 = min(int(math.ceil((maxx - x0) / res)), W - 1)
+            j0 = max(int(math.floor((minz - z0) / res)), 0); j1 = min(int(math.ceil((maxz - z0) / res)), H - 1)
+            d = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2])
+            if abs(d) < 1e-12:
+                continue
+            for j in range(j0, j1 + 1):
+                pz = z0 + j * res
+                for i in range(i0, i1 + 1):
+                    px = x0 + i * res
+                    l1 = ((b[2] - c[2]) * (px - c[0]) + (c[0] - b[0]) * (pz - c[2])) / d
+                    l2 = ((c[2] - a[2]) * (px - c[0]) + (a[0] - c[0]) * (pz - c[2])) / d
+                    l3 = 1 - l1 - l2
+                    if l1 >= -1e-6 and l2 >= -1e-6 and l3 >= -1e-6:
+                        y = l1 * a[1] + l2 * b[1] + l3 * c[1]
+                        if mode == 0:
+                            if y < limit[j, i] and y > out[j, i]:
+                                out[j, i] = y
+                        elif y < out[j, i]:
+                            out[j, i] = y
+    return raster_cavity
+
+
+_CAVITY = None
+
+
+def raster_cavity(*a):
+    global _CAVITY
+    if _CAVITY is None:
+        _CAVITY = _make_cavity_raster()
+    return _CAVITY(*a)
+
+
 
 def build_grid(gd, isl, quirks=None, scenery=False, max_cells=GRID_MAX_CELLS, adaptive_res=False):
     """
@@ -149,6 +198,8 @@ def build_grid(gd, isl, quirks=None, scenery=False, max_cells=GRID_MAX_CELLS, ad
     zs = np.arange(z0, z1 + res, res)
     out = np.full((len(zs), len(xs)), -np.inf)
     X, Z = np.meshgrid(xs, zs)
+    cutout = quirks.get('cutout')
+    terr = np.full_like(out, -np.inf)       # heightmap terrains alone: a cutout keeps them
     for it in items:
         if it[0] == 'mesh':
             if len(it[2]) and not is_structure(it, quirks):      # structures are drawn as polygons, not heights
@@ -160,11 +211,27 @@ def build_grid(gd, isl, quirks=None, scenery=False, max_cells=GRID_MAX_CELLS, ad
             col = (X + origin[0] - b[0]) / sx
             row = (Z + origin[2] - b[1]) / sz
             v = map_coordinates(h, [row, col], order=1, cval=np.nan)
-            out = np.fmax(out, yo + v / 32766 * sy)
+            v = yo + v / 32766 * sy
+            out = np.fmax(out, v)
+            terr = np.fmax(terr, np.where(np.isnan(v), -np.inf, v))
     comb = gd.combined_scenery(isl) if scenery else []
     for cat, V, T in comb:                                   # --scenery: baked rocks raise the ground like any other mesh
         if cat == 'rock':
             raster(V - o3, T, xs[0], zs[0], res, out)
+    cover = None
+    if cutout:      # a tunnel under a hill: inside the region show the floor under the roof, not the hill's top
+        cover = shapely.MultiPolygon([shapely.Polygon(r) for r in cutout['regions']])
+        inside = shapely.contains_xy(cover, X, Z)
+        roofs = {'L24:' + n for n in cutout['roof']}
+        meshes = [it for it in items if it[0] == 'mesh' and len(it[2]) and not is_structure(it, quirks)]
+        ceil = np.full_like(out, np.inf)
+        for it in meshes:
+            if it[-1] in roofs:
+                raster_cavity(it[1] - o3, it[2], xs[0], zs[0], res, 1, ceil, ceil)
+        floor = terr
+        for it in meshes:
+            raster_cavity(it[1] - o3, it[2], xs[0], zs[0], res, 0, ceil, floor)
+        out = np.where(inside, floor, out)
     out[np.isneginf(out)] = np.nan
 
     # 5. structures -> vector footprints (above water / fully submerged / dock poles)
@@ -225,7 +292,7 @@ def build_grid(gd, isl, quirks=None, scenery=False, max_cells=GRID_MAX_CELLS, ad
     PL = shapely.union_all(poles) if poles else None
     if A is not None and S is not None:
         S = S.difference(A)
-    return dict(xs=xs, zs=zs, Y=out.astype(np.float32), polys=(A, S, PL), items=[(i[0], i[-1]) for i in items], res=res, veg=veg)
+    return dict(xs=xs, zs=zs, Y=out.astype(np.float32), polys=(A, S, PL), items=[(i[0], i[-1]) for i in items], res=res, veg=veg, cover=cover)
 
 
 def grid_summary(grid):

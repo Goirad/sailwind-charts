@@ -163,6 +163,14 @@ region = "Spoiler!"
 [islands."island 33 M cave church"]
 name = "Firefly Grotto"
 region = "Aestrin"
+notes = "A navigable lagoon fills a hollow under the hill; the hill's top surface hides it (and the flat 'island cave church town' meshes) in a top-down maximum. The cutout region (island-local metres: where the hill mesh has an underside, plus a few metres) shows the floor under the roof instead, marked by a dashed edge with ticks. The files have no floor geometry in the middle, so it is drawn as the game's flat 20 m floor; the walls are sheer (checked in game 2026-10-14), so there is no wall slope to contour."
+[islands."island 33 M cave church".quirks]
+nodata_is_water = true
+[islands."island 33 M cave church".quirks.cutout]
+roof = ["terrain open", "terrain grotto extras"]
+regions = [
+  [[-597, -917], [-566, -907], [-534, -901], [-521, -902], [-482, -892], [-466, -894], [-391, -871], [-289, -859], [-268, -859], [-261, -863], [-237, -856], [-147, -894], [-117, -918], [-96, -924], [-83, -921], [-52, -924], [-42, -912], [-49, -874], [-46, -862], [-37, -854], [-36, -860], [1, -851], [26, -826], [26, -803], [37, -795], [66, -752], [69, -734], [75, -731], [81, -735], [83, -753], [47, -813], [49, -824], [43, -835], [48, -843], [41, -852], [51, -891], [54, -935], [67, -946], [69, -962], [78, -979], [77, -988], [90, -1006], [111, -1012], [123, -1023], [142, -1030], [152, -1041], [154, -1057], [142, -1087], [121, -1106], [86, -1117], [53, -1113], [38, -1120], [15, -1111], [-10, -1125], [-34, -1115], [-41, -1116], [-97, -1159], [-125, -1201], [-166, -1202], [-171, -1193], [-167, -1159], [-156, -1133], [-145, -1120], [-138, -1103], [-139, -1091], [-128, -1081], [-126, -1070], [-130, -1065], [-124, -1058], [-136, -1054], [-150, -1037], [-166, -1029], [-182, -1028], [-189, -1022], [-206, -1023], [-219, -1018], [-242, -1017], [-261, -1025], [-304, -1026], [-341, -1035], [-414, -1013], [-425, -1016], [-463, -996], [-512, -981], [-538, -985], [-561, -1003], [-569, -1001], [-577, -995], [-577, -980], [-602, -939]],
+]
 
 [islands."island 34 M monastery"]
 name = "Aestra Abbey"
@@ -174,7 +182,7 @@ region = "Aestrin"
 
 [islands."island 36"]
 name = "Bone Isle"
-region = "Aestrin"
+region = "Spoiler!"
 
 [islands."island 37 E (swamp)"]
 name = "Dead Cove"
@@ -208,7 +216,7 @@ notes = "Two hill masses split by a channel, harbour with pier, a village of ~20
 
 [islands."island 41 (mirage mountain)"]
 name = "Mirage Mountain"
-region = "Spoiler!"
+region = "Al'Ankh"
 status = "doubtful"
 notes = "The chart shows a low island with no peak. The nested \"island A new2\" holds two mountain meshes (164x140 m, 17-81 m high, no colliders) offset +18 m inside: possibly the real peak, not merged."
 

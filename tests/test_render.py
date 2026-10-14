@@ -100,3 +100,42 @@ def test_size_follows_the_extent_within_the_floor_and_cap():
     assert chart_size(fr, Style(size_px=777)) == 777                              # a fixed size wins
     assert key_width_px(2000, Style()) == 350 and key_width_px(5000, Style()) == 500 and key_width_px(10000, Style()) == 500
     assert key_width_px(2000, Style(key_px=0)) == 0
+
+
+def dome():
+    """A roof over a pool: a floor at -5 m, a roof underside at 30 m and the roof's top at 35 m (vertices, triangles)."""
+    V, T = [], []
+    # a 20 x 20 m square roof 30 m up with its underside, over a floor at -5 m (each a 2-triangle quad)
+    def quad(y, up):
+        base = len(V)
+        V.extend([[0, y, 0], [20, y, 0], [20, y, 20], [0, y, 20]])
+        tri = [[0, 2, 1], [0, 3, 2]] if up else [[0, 1, 2], [0, 2, 3]]
+        T.extend([[base + a for a in t] for t in tri])
+    quad(-5.0, True)                                        # floor
+    quad(30.0, False)                                       # roof underside
+    quad(35.0, True)                                        # roof top
+    return np.array(V, float), np.array(T, np.int64)
+
+
+def test_cavity_raster_finds_the_roof_underside_and_the_floor_below_it():
+    from sailwind_charts.grid import raster_cavity
+    V, T = dome()
+    ceil = np.full((10, 10), np.inf)
+    raster_cavity(V, T, 2.0, 2.0, 1.0, 1, ceil, ceil)       # lowest down-facing surface: the roof's underside
+    assert ceil[5, 5] == pytest.approx(30.0)
+    floor = np.full((10, 10), -np.inf)
+    raster_cavity(V, T, 2.0, 2.0, 1.0, 0, ceil, floor)      # highest up-facing surface below the roof: the floor, not the roof top
+    assert floor[5, 5] == pytest.approx(-5.0)
+    plain = np.full((10, 10), -np.inf)
+    raster(V, T, 2.0, 2.0, 1.0, plain)                      # the plain top-down maximum only sees the roof top
+    assert plain[5, 5] == pytest.approx(35.0)
+
+
+def test_a_cover_draws_without_breaking_the_panels(tmp_path):
+    import shapely
+    g = island_grid()
+    g['cover'] = shapely.Polygon([(-20, -20), (20, -20), (20, 20), (-20, 20)])
+    out = tmp_path / 'cove.jpg'
+    info = render_chart(g, 'Cove Island', str(out), Style(size_px=800))
+    assert all(ok for _, ok in info['panel_fit'])
+    assert out.stat().st_size > 10_000

@@ -17,7 +17,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from .style import (BAND_COLORS, C_DEEP, C_FINE, C_LAND, C_MED, CROP_STRUCTURE_MARGIN_M, DEEP_COLOR, LAYOUT_PX, NODATA_COLOR,
+from .style import (BAND_COLORS, COVER_EDGE, COVER_LINE_PX, COVER_PROBE_M, COVER_STEP_M, COVER_TICK_M, COVER_TICK_SPACING_M, C_DEEP, C_FINE, C_LAND, C_MED, CROP_STRUCTURE_MARGIN_M, DEEP_COLOR, LAYOUT_PX, NODATA_COLOR,
                     POLE_DRAW_RADIUS_M, SCENERY_COLORS, SHELF_EDGE_DEPTH_M, STRUCT_EDGE, STRUCT_FILL, SUBMERGED_FILL, W_FINE,
                     W_LAND, W_MED, W_SHORE, Style)
 
@@ -209,6 +209,51 @@ def _patches(geom, **kw):
     return out
 
 
+def draw_cover(ax, grid, lwpt):
+    """
+    Mark ground that is shown cut away (a navigable tunnel under a hill): a dashed edge with short ticks pointing out into
+    the hill, like an overhang.  Only where land lies outside the edge: across a mouth to open water nothing is drawn, and
+    the water keeps its true colours.
+    """
+    import shapely
+    from matplotlib.collections import LineCollection
+    cover = grid.get('cover')
+    if cover is None or cover.is_empty:
+        return
+    xs, zs, Y = grid['xs'], grid['zs'], grid['Y']
+    res = float(xs[1] - xs[0])
+
+    def land(x, z):
+        i, j = int(round((x - xs[0]) / res)), int(round((z - zs[0]) / res))
+        return 0 <= i < len(xs) and 0 <= j < len(zs) and Y[j, i] >= 0
+
+    runs, ticks = [], []
+    for poly in getattr(cover, 'geoms', [cover]):
+        ring = shapely.geometry.polygon.orient(poly, 1.0).exterior       # counter-clockwise: outside is to the right
+        n = max(int(ring.length / COVER_STEP_M), 8)
+        pts = np.array([ring.interpolate(k * ring.length / n).coords[0] for k in range(n)])
+        nxt = np.roll(pts, -1, axis=0); prv = np.roll(pts, 1, axis=0)
+        t = nxt - prv; t /= np.maximum(np.hypot(t[:, 0], t[:, 1]), 1e-9)[:, None]
+        out = np.stack([t[:, 1], -t[:, 0]], axis=1)                        # right-hand normal
+        on = np.array([land(*(p + out[k] * COVER_PROBE_M)) for k, p in enumerate(pts)])
+        k0 = int(np.argmin(on)) if not on.all() else 0                     # start where a run is broken
+        order = [(k0 + k) % n for k in range(n + 1)]
+        run = []
+        for k in order:
+            if on[k]:
+                run.append(pts[k])
+            else:
+                if len(run) > 1: runs.append(np.array(run))
+                run = []
+        if len(run) > 1: runs.append(np.array(run))
+        every = max(int(round(COVER_TICK_SPACING_M / (ring.length / n))), 1)
+        for k in range(0, n, every):
+            if on[k]:
+                ticks.append([pts[k], pts[k] + out[k] * COVER_TICK_M])
+    ax.add_collection(LineCollection(runs, colors=COVER_EDGE, linewidths=COVER_LINE_PX * lwpt, linestyles=(0, (5, 2.5)), zorder=4, capstyle='butt'))
+    ax.add_collection(LineCollection(ticks, colors=COVER_EDGE, linewidths=COVER_LINE_PX * lwpt, zorder=4, capstyle='butt'))
+
+
 def draw_structures(ax, grid, fr, lwpt):
     A, S, PL = grid['polys']
     size = max(fr.width_m, fr.height_m)
@@ -350,6 +395,7 @@ class KeyPanel:
         self.max_depth = max_depth_m
         self.has_nodata = bool(fr.nodata.any())
         self.has_sub = S is not None and not S.is_empty
+        self.has_cover = grid.get('cover') is not None
         self.cv = cv
         self.scale = 1.0
         if key_px:           # shrink the key so it ends up about key_px final pixels wide
@@ -373,6 +419,8 @@ class KeyPanel:
             rows.append(KeyRow('nodata', 'No data (not modelled)', h(150)))
         if self.has_sub:
             rows.append(KeyRow('sub', 'Submerged structure', h(150)))
+        if self.has_cover:
+            rows.append(KeyRow('cover', 'Cave: sheer walls, roof not shown', h(150)))
         rows.append(KeyRow('pole', 'Dock pole (drawn oversize) - hazard', 0))
         return rows
 
@@ -430,6 +478,16 @@ class KeyPanel:
             elif r.kind == 'sub':
                 cv.box(x + KP, yy - 55 * ks, SW, 110 * ks, facecolor=SUBMERGED_FILL, edgecolor=STRUCT_FILL, lw=3 * cv.lwpt * lwk,
                        hatch='////')
+                say(x + TX, yy, r.text, KS, va='center')
+            elif r.kind == 'cover':          # land above, water below, the dashed edge with ticks pointing into the land
+                cv.box(x + KP, yy, SW, 55 * ks, facecolor=BAND_COLORS['land'], edgecolor='none')
+                cv.box(x + KP, yy - 55 * ks, SW, 55 * ks, facecolor=DEEP_COLOR, edgecolor='none')
+                cv.ax.plot([cv.X(x + KP), cv.X(x + KP + SW)], [cv.Z(yy), cv.Z(yy)], color=COVER_EDGE, lw=COVER_LINE_PX * cv.lwpt * lwk,
+                           linestyle=(0, (5, 2.5)), zorder=12, solid_capstyle='butt')
+                for tx in np.linspace(x + KP + SW * 0.1, x + KP + SW * 0.9, 6):
+                    cv.ax.plot([cv.X(tx), cv.X(tx)], [cv.Z(yy), cv.Z(yy + 45 * ks)], color=COVER_EDGE,
+                               lw=COVER_LINE_PX * cv.lwpt * lwk, zorder=12, solid_capstyle='butt')
+                cv.box(x + KP, yy - 55 * ks, SW, 110 * ks, facecolor='none', edgecolor='k', lw=2 * cv.lwpt * lwk)
                 say(x + TX, yy, r.text, KS, va='center')
             elif r.kind == 'pole':
                 cx = x + KP + SW / 2
@@ -522,6 +580,7 @@ def render_chart(grid, title, out_path, style=Style()):
     ax.set_axis_off()
     ax.imshow(surface_image(fr, style), origin='lower', extent=fr.ext, interpolation='antialiased', zorder=0)
     draw_contours(ax, fr, style, lwpt)
+    draw_cover(ax, grid, lwpt)
     draw_structures(ax, grid, fr, lwpt)
     ax.set_xlim(fr.ext[0], fr.ext[1]); ax.set_ylim(fr.ext[2], fr.ext[3]); ax.set_aspect('auto')
 
