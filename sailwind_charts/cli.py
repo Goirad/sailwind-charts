@@ -302,6 +302,11 @@ def build_parser():
     p.add_argument('--charts', default='charts', help='folder with NAME.jpg, NAME_key.png, NAME.json (default %(default)s)')
     p.add_argument('--out', default='site'); p.add_argument('--lenient', action='store_true',
                    help='put islands without a valid region under "Unassigned" instead of failing')
+    p = sub.add_parser('publish', help='force-push site/ to a single-commit gh-pages branch (history never accumulates)')
+    p.add_argument('--site', default='site'); p.add_argument('--branch', default='gh-pages')
+    p.add_argument('--remote', default='origin', help="git remote name or URL (default %(default)s; falls back to [site].repo_url)")
+    p.add_argument('--dry-run', action='store_true', help='build the commit and report, push nothing')
+    p.add_argument('--yes', action='store_true', help='do not ask before force-pushing')
     p = sub.add_parser('selftest', help='regression test: Albacore Island must reproduce the stored reference')
     p.add_argument('--update', action='store_true', help='rewrite the reference (only after an intended change!)')
     p = sub.add_parser('sheet', help='contact sheet of all charts in a folder'); p.add_argument('folder'); p.add_argument('--out', default='overview.jpg')
@@ -320,6 +325,13 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     if args.cmd == 'sheet':            # these need no game data
         return cmd_sheet(args, None, None)
+    if args.cmd == 'publish':
+        from .publish import confirm_or_exit, publish, resolve_remote_url
+        url = resolve_remote_url(args.remote, Catalog.load(args.catalog).site.get('repo_url', ''))
+        if not args.dry_run:
+            confirm_or_exit(url, args.branch, args.yes)
+        publish(args.site, args.branch, url, args.dry_run)
+        return 0
     if args.cmd == 'site':
         from .site import build_site
         build_site(Catalog.load(args.catalog), args.charts, args.out, args.lenient)

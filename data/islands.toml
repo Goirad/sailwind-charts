@@ -19,7 +19,7 @@
 [site]
 title = "Sailwind Bathymetry Charts"
 author = "Stelaro"
-repo_url = ""
+repo_url = "https://github.com/Goirad/sailwind-charts"
 # Button groups on the site, in display order.  Islands inside a group are sorted by name.  Fill this in, then set `region` on each island.
 regions = ["Al'Ankh", "Aestrin", "Emerald Archipelago", "Fire Fish Lagoon", "Other", "Spoiler!"]
 # Regions whose buttons start hidden (spoilers); every other region starts open.  Both are collapsible on the page.

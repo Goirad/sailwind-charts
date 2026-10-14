@@ -66,8 +66,15 @@ $PY -I charts.py site --charts charts --out site        # then open site/index.h
 One static page, no JavaScript, no dependencies: region-grouped buttons (`#Name` links, so every chart has a shareable URL), the
 chart at a fixed 1100 CSS px so browser zoom / pinch magnifies it, a key that can be switched off, and an About box. Set `[site]`
 (`title`, `author`, `repo_url`, `regions`) and each island's `region` in `data/islands.toml`; the build fails on an island whose
-region is not listed (`--lenient` groups those under "Unassigned"). Needs a browser with CSS `:has()` (2023+). To publish, copy
-`site/` to a `gh-pages` branch (kept separate so the binaries never enter `master`'s history).
+region is not listed (`--lenient` groups those under "Unassigned"). Needs a browser with CSS `:has()` (2023+).
+
+### Publishing (GitHub Pages)
+```bash
+$PY -I charts.py publish --dry-run     # build the commit, report files/size, push nothing
+$PY -I charts.py publish --yes         # force-push site/ to the gh-pages branch of `origin` (or [site].repo_url)
+```
+The site goes to a `gh-pages` branch that is always **one** commit (a throw-away repository is force-pushed), so the chart binaries never
+accumulate in any history and `master` stays small. Enable Pages for the repository: Settings, Pages, source = `gh-pages` branch, root.
 
 ## How it works
 `gamedata.py` opens `level24` (the world scene) with UnityPy and finds the objects named `island …`; `classify.py` decides by
