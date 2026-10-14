@@ -25,7 +25,7 @@ class Style:
     """How a chart is rendered.  Sizes are in final pixels unless stated otherwise."""
     size_px: int = 2000             # long side of the image (the layout is designed for 10,000 px and scaled)
     quality: int = 80               # JPEG quality
-    show_key: bool = True
+    key: str = 'baked'              # 'baked' (in the image) | 'separate' (reserved, written as <name>_key.png + <name>.json) | 'none'
     margin_frac: float = 0.05       # sea buffer around the shelf crop: this fraction of its long side...
     margin_min_m: float = 15.0      # ...but at least this many metres (0 / 0 = none); only real grid data is used
     key_px: int = 500               # key panel width (0 = full designed size); it is never enlarged

@@ -41,10 +41,11 @@ The game folder is `$SAILWIND_DATA` or `--game-data PATH`.
 | `selftest [--update]` | Albacore must reproduce `reference/` (numbers and image) |
 | `manifest [--check]` | detect new/removed/changed islands after a game update |
 | `sheet FOLDER` | contact sheet |
+| `site --charts DIR --out DIR` | build the static site from charts rendered with `--key separate` (see below) |
 | `explore tree\|near\|terrain-check\|layers` | work out how an odd island is built |
 
 ### Render options
-`--size` long side in px · `--quality` JPEG · `--no-key` · `--margin F` sea buffer as a fraction of the long side (min 15 m; 0 = none) ·
+`--size` long side in px · `--quality` JPEG · `--key baked|separate|none` (separate = for the site: the image reserves the key's corner and the key is written as `NAME_key.png` with its placement in `NAME.json`) · `--margin F` sea buffer as a fraction of the long side (min 15 m; 0 = none) ·
 `--key-width PX` key width in final pixels (default 500, 0 = full size) · `--max-depth M` deepest drawn water (default 20) ·
 `--no-scenery` · `--fixed-res` (always 0.5 m raster; default is finer for small islands) · `--max-cells N` · `--jobs N` · `--members` ·
 `--title` · `--dump-grid DIR`. File names come from the real name (`Albacore_Island.jpg`, apostrophes dropped).
@@ -56,6 +57,17 @@ One table per island keyed by the developer object name: `name` (title and file 
 islands that are one place in the game and are drawn as one map in their true relative positions (the Lagoon ring). After a game
 update: `manifest --check` and `names` list what is new; render it, compare against the game, fix with the narrowest quirk, and
 update the notes.
+
+## The site
+```bash
+$PY -I charts.py render --all --key separate --size 5000 --quality 90 --out charts
+$PY -I charts.py site --charts charts --out site        # then open site/index.html
+```
+One static page, no JavaScript, no dependencies: region-grouped buttons (`#Name` links, so every chart has a shareable URL), the
+chart at a fixed 1100 CSS px so browser zoom / pinch magnifies it, a key that can be switched off, and an About box. Set `[site]`
+(`title`, `author`, `repo_url`, `regions`) and each island's `region` in `data/islands.toml`; the build fails on an island whose
+region is not listed (`--lenient` groups those under "Unassigned"). Needs a browser with CSS `:has()` (2023+). To publish, copy
+`site/` to a `gh-pages` branch (kept separate so the binaries never enter `master`'s history).
 
 ## How it works
 `gamedata.py` opens `level24` (the world scene) with UnityPy and finds the objects named `island …`; `classify.py` decides by

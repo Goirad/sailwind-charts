@@ -22,14 +22,14 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAUNCHER = os.path.join(HERE, 'charts.py')
 REFERENCE_DIR = os.path.join(HERE, 'reference')
 SELFTEST_ISLAND = 'island 4 A (fish island)'     # shown in-game as "Albacore Island"
-SELFTEST_STYLE = Style(size_px=2000, quality=80, show_key=False)
+SELFTEST_STYLE = Style(size_px=2000, quality=80, key='none')
 
 
 # --------------------------------------------------------------------------------------------------
 # Shared helpers
 # --------------------------------------------------------------------------------------------------
 def _style(args, quirks=None):
-    return Style(size_px=args.size, quality=args.quality, show_key=not args.no_key, margin_frac=args.margin,
+    return Style(size_px=args.size, quality=args.quality, key=args.key, margin_frac=args.margin,
                  key_px=args.key_width, max_depth_m=args.max_depth,
                  nodata_is_water=bool((quirks or {}).get('nodata_is_water')))
 
@@ -127,7 +127,7 @@ def _flags(args):
     """The options a worker process needs to render the same way as this one."""
     return (['--out', args.out, '--size', str(args.size), '--quality', str(args.quality), '--max-cells', str(args.max_cells),
              '--margin', str(args.margin), '--key-width', str(args.key_width), '--max-depth', str(args.max_depth)]
-            + (['--no-key'] if args.no_key else []) + (['--no-scenery'] if args.no_scenery else [])
+            + ['--key', args.key] + (['--no-scenery'] if args.no_scenery else [])
             + (['--fixed-res'] if args.fixed_res else []))
 
 
@@ -254,7 +254,9 @@ def _add_render_options(p):
     p.add_argument('--out', default='charts')
     p.add_argument('--size', type=int, default=2000, help='long side of the image in px (default %(default)s)')
     p.add_argument('--quality', type=int, default=80, help='JPEG quality (default %(default)s)')
-    p.add_argument('--no-key', action='store_true', help='omit the key panel')
+    p.add_argument('--key', choices=('baked', 'separate', 'none'), default=Style.key,
+                   help="key panel: 'baked' into the image, 'separate' (the image reserves its corner; the key is written as NAME_key.png "
+                        "with placement in NAME.json, for the site) or 'none' (default %(default)s)")
     p.add_argument('--margin', type=float, default=Style.margin_frac,
                    help='sea buffer around the chart as a fraction of its long side, at least %g m (default %%(default)s; 0 = none)' % Style.margin_min_m)
     p.add_argument('--key-width', type=int, default=Style.key_px, help='key width in final pixels (default %(default)s; 0 = full size)')
@@ -284,6 +286,10 @@ def build_parser():
     p.add_argument('names', nargs='*'); p.add_argument('--title'); p.add_argument('--group', help='a composite from the catalogue')
     p.add_argument('--res', type=float, default=1.0, help='composite raster resolution in m (default %(default)s)')
     _add_render_options(p)
+    p = sub.add_parser('site', help='build the static site from charts rendered with --key separate')
+    p.add_argument('--charts', default='charts', help='folder with NAME.jpg, NAME_key.png, NAME.json (default %(default)s)')
+    p.add_argument('--out', default='site'); p.add_argument('--lenient', action='store_true',
+                   help='put islands without a valid region under "Unassigned" instead of failing')
     p = sub.add_parser('selftest', help='regression test: Albacore Island must reproduce the stored reference')
     p.add_argument('--update', action='store_true', help='rewrite the reference (only after an intended change!)')
     p = sub.add_parser('sheet', help='contact sheet of all charts in a folder'); p.add_argument('folder'); p.add_argument('--out', default='overview.jpg')
@@ -300,8 +306,12 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    if args.cmd == 'sheet':            # needs no game data
+    if args.cmd == 'sheet':            # these need no game data
         return cmd_sheet(args, None, None)
+    if args.cmd == 'site':
+        from .site import build_site
+        build_site(Catalog.load(args.catalog), args.charts, args.out, args.lenient)
+        return 0
     if getattr(args, 'max_depth', 11) <= 10:
         raise SystemExit('--max-depth must exceed 10 (the shelf edge)')
     gd = GameData(args.game_data, mods=args.mods)

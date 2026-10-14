@@ -12,6 +12,7 @@ class Island:
     name: str = ''            # real (in-game) name; blank = unknown
     skip: bool = False
     mod: bool = False
+    region: str = ''          # button group on the site (one of the catalogue's site regions)
     status: str = ''
     notes: str = ''
     quirks: dict = field(default_factory=dict)
@@ -26,10 +27,12 @@ class Composite:
     title: str
     members: tuple
     notes: str = ''
+    region: str = ''
 
 
 class Catalog:
-    def __init__(self, islands, composites):
+    def __init__(self, islands, composites, site=None):
+        self.site = site or {}          # [site]: title, author, repo_url, regions (ordered)
         self.islands = islands          # {key: Island}
         self.composites = composites    # {title: Composite}
         self.members = {m: c.title for c in composites.values() for m in c.members}
@@ -37,12 +40,12 @@ class Catalog:
     @classmethod
     def load(cls, path=DEFAULT_CATALOG):
         if not os.path.exists(path):
-            return cls({}, {})
+            return cls({}, {}, {})
         with open(path, 'rb') as f:
             raw = tomllib.load(f)
         islands = {k: Island(key=k, **v) for k, v in raw.get('islands', {}).items()}
-        composites = {t: Composite(title=t, members=tuple(v['members']), notes=v.get('notes', '')) for t, v in raw.get('composites', {}).items()}
-        return cls(islands, composites)
+        composites = {t: Composite(title=t, members=tuple(v['members']), notes=v.get('notes', ''), region=v.get('region', '')) for t, v in raw.get('composites', {}).items()}
+        return cls(islands, composites, raw.get('site', {}))
 
     def island(self, key):
         """The catalogue entry of an island; an island that is not catalogued gets a blank one (title = object name)."""

@@ -10,7 +10,10 @@ Drawing a chart from a height grid.
 
 All layout is designed for a 10,000 px long side ("design px") and scaled by the save DPI, so any size keeps proportions.
 """
+import json
+import os
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -67,6 +70,27 @@ def _shelf_mask(Y, res):
     return shelf
 
 
+def _extend_into_open_sea(Y, nan, xs, zs, res, lack, floor):
+    """
+    Add the margin the grid cannot supply (cells per side in `lack`) as open sea at the floor depth, but only on a side where the
+    data already ends in floor-depth water: there is no seam.  On a side where the data ends in something else (Gold Rock's flat
+    9.7 m plane) the chart stops at the data instead.
+    """
+    cells = {}
+    strips = dict(W=Y[:, 0], E=Y[:, -1], S=Y[0, :], N=Y[-1, :])
+    for side, n in lack.items():
+        if n > 0 and np.mean(strips[side] <= floor + 0.5) >= 0.95:
+            cells[side] = n
+    if not cells:
+        return Y, nan, xs, zs
+    w, e, s, n = (cells.get(k, 0) for k in 'WESN')
+    Y = np.pad(Y, ((s, n), (w, e)), constant_values=floor)
+    nan = np.pad(nan, ((s, n), (w, e)), constant_values=True)
+    xs = np.r_[xs[0] - res * np.arange(w, 0, -1), xs, xs[-1] + res * np.arange(1, e + 1)]
+    zs = np.r_[zs[0] - res * np.arange(s, 0, -1), zs, zs[-1] + res * np.arange(1, n + 1)]
+    return Y, nan, xs, zs
+
+
 def crop_frame(grid, style):
     """Crop the grid to the shelf (grown to contain all structures, plus the margin) and describe the window."""
     from scipy import ndimage
@@ -88,10 +112,13 @@ def crop_frame(grid, style):
         bx1 = max(b[2] for b in bounds) + m; by1 = max(b[3] for b in bounds) + m
         i0 = min(i0, max(int((bx0 - xs[0]) / res), 0)); i1 = max(i1, min(int((bx1 - xs[0]) / res) + 1, len(xs) - 1))
         j0 = min(j0, max(int((by0 - zs[0]) / res), 0)); j1 = max(j1, min(int((by1 - zs[0]) / res) + 1, len(zs) - 1))
-    if style.margin_frac or style.margin_min_m:       # only real grid data is used, so the margin stops where the data does
+    pad = 0
+    if style.margin_frac or style.margin_min_m:       # a margin of sea around the crop
         pad = int(round(max(style.margin_min_m, style.margin_frac * max(xs[i1] - xs[i0], zs[j1] - zs[j0])) / res))
-        i0, i1, j0, j1 = max(i0 - pad, 0), min(i1 + pad, len(xs) - 1), max(j0 - pad, 0), min(j1 + pad, len(zs) - 1)
+    lack = dict(W=pad - i0, S=pad - j0, E=pad - (len(xs) - 1 - i1), N=pad - (len(zs) - 1 - j1))    # margin the grid cannot supply
+    i0, i1, j0, j1 = max(i0 - pad, 0), min(i1 + pad, len(xs) - 1), max(j0 - pad, 0), min(j1 + pad, len(zs) - 1)
     Y = Y[j0:j1 + 1, i0:i1 + 1]; nan = nan[j0:j1 + 1, i0:i1 + 1]; xs = xs[i0:i1 + 1]; zs = zs[j0:j1 + 1]
+    Y, nan, xs, zs = _extend_into_open_sea(Y, nan, xs, zs, res, lack, -style.max_depth_m)
     ext = [xs[0] - res / 2, xs[-1] + res / 2, zs[0] - res / 2, zs[-1] + res / 2]
     pxm = LAYOUT_PX / max(ext[1] - ext[0], ext[3] - ext[2])
 
@@ -308,6 +335,9 @@ class KeyRow:
     lw: float = 0        # line width for line rows
 
 
+KEY_TITLE_DROP = 60        # extra space above the key's title row (in key units), so its padding matches the left and bottom ones
+
+
 class KeyPanel:
     """The key.  Its size is chosen so it ends up about `style.key_px` final pixels wide."""
     name, corner = 'key', 'BR'
@@ -357,7 +387,7 @@ class KeyPanel:
             if r.kind == 'title': widest = max(widest, KP + cv.measure(r.text, r.size, fontweight='bold')[0])
             elif r.kind == 'note': widest = max(widest, KP + cv.measure(r.text, r.size, style='italic')[0])
             else: widest = max(widest, TX + cv.measure(r.text, KS)[0])
-        return rows, widest + KP, KP + sum(r.height for r in rows[:-1]) + 110 * ks + KP * 0.4
+        return rows, widest + KP, KP + KEY_TITLE_DROP * ks + sum(r.height for r in rows[:-1]) + 110 * ks + KP * 0.4
 
     def draw(self, cv, x, y, corner):
         ks = self.scale
@@ -368,7 +398,7 @@ class KeyPanel:
         from matplotlib.patches import Circle
         cols = [to_rgb(BAND_COLORS[k]) for k in ('5-10', '10+')]
         cv.box(x, y, self.w, self.h, **cv.frame_style)
-        yy = y + self.h - KP * 0.9
+        yy = y + self.h - KP * 0.9 - KEY_TITLE_DROP * ks      # the title sits as far below the border as the text is from the left one
         rects = []
         say = lambda *a, **kw: rects.append(cv.extent(cv.text(*a, **kw)))
         for r in self.rows:
@@ -439,6 +469,32 @@ def _place_panels(cv, panels):
 # --------------------------------------------------------------------------------------------------
 # The whole chart
 # --------------------------------------------------------------------------------------------------
+KEY_PNG_PAD = 20       # design px around a separate key so the frame line is not clipped
+
+
+def _write_separate_key(cv, key, xy, base, title, scale):
+    """Write the key as a transparent PNG (<base>_key.png) and where it belongs in the chart (<base>.json, as fractions of the image)."""
+    import matplotlib.pyplot as plt
+    w, h = key.w + 2 * KEY_PNG_PAD, key.h + 2 * KEY_PNG_PAD
+    pxm = cv.fr.pxm
+    fr = SimpleNamespace(ext=[0, w / pxm, 0, h / pxm], pxm=pxm)
+    fig = plt.figure(figsize=(w / 100, h / 100), dpi=100)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_axis_off()
+    ax.set_xlim(fr.ext[0], fr.ext[1]); ax.set_ylim(fr.ext[2], fr.ext[3]); ax.set_aspect('auto')
+    kcv = Canvas(fig, ax, fr, cv.lwpt)
+    ok = key.draw(kcv, KEY_PNG_PAD, KEY_PNG_PAD, 'BR')
+    fig.savefig(base + '_key.png', dpi=100 * scale, transparent=True)
+    plt.close(fig)
+    wpx, hpx = cv.fr.wpx, cv.fr.hpx
+    x, y = xy
+    with open(base + '.json', 'w') as f:
+        json.dump(dict(title=title, image_px=[round(wpx * scale), round(hpx * scale)],
+                       key=dict(left=(x - KEY_PNG_PAD) / wpx, top=(hpx - (y + key.h + KEY_PNG_PAD)) / hpx, width=w / wpx,
+                                px=[round(w * scale), round(h * scale)])), f, indent=1)
+    return ok
+
+
 def render_chart(grid, title, out_path, style=Style()):
     """Render a height grid to an image.  Returns {panel_fit, canvas_design_px, crop_cells} for checking."""
     import matplotlib
@@ -459,15 +515,20 @@ def render_chart(grid, title, out_path, style=Style()):
 
     cv = Canvas(fig, ax, fr, lwpt)
     title_panel, north, scale_bar = TitlePanel(cv, title), NorthArrow(), ScaleBar(cv)
-    panels = [north] + ([KeyPanel(cv, fr, style, grid, scale)] if style.show_key else []) + [scale_bar, title_panel]
+    panels = [north] + ([KeyPanel(cv, fr, style, grid, scale)] if style.key != 'none' else []) + [scale_bar, title_panel]
     placement = _place_panels(cv, panels)
-    # draw in a fixed order (title, north, scale, key): later panels sit on top
+    # draw in a fixed order (title, north, scale, key): later panels sit on top; a separate key is only reserved here
     fit = []
     for p in sorted(panels, key=lambda p: ('title', 'north', 'scale', 'key').index(p.name)):
         corner, (x, y) = placement[p.name]
+        if p.name == 'key' and style.key == 'separate':
+            continue
         fit.append((p.name, p.draw(cv, x, y, corner)))
 
     kwargs = dict(quality=style.quality, subsampling=0, optimize=False) if out_path.lower().endswith(('.jpg', '.jpeg')) else {}
     fig.savefig(out_path, dpi=100 * scale, pil_kwargs=kwargs)
     plt.close(fig)
+    if style.key == 'separate':
+        key = next(p for p in panels if p.name == 'key')
+        fit.append(('key', _write_separate_key(cv, key, placement['key'][1], os.path.splitext(out_path)[0], title, scale)))
     return dict(panel_fit=fit, canvas_design_px=(fr.wpx, fr.hpx), crop_cells=fr.Y.shape)

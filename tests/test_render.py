@@ -55,3 +55,37 @@ def test_compose_takes_the_maximum_height():
     b['Y'] = b['Y'] + 5
     grid = compose_grids([(a, (0.0, 0.0)), (b, (0.0, 0.0))], 1.0)
     assert float(np.nanmax(grid['Y'])) == pytest.approx(float(b['Y'].max()))
+
+
+def test_separate_key_is_written_with_its_placement(tmp_path):
+    import json
+    out = tmp_path / 'cone.jpg'
+    info = render_chart(island_grid(), 'Cone Island', str(out), Style(size_px=800, key='separate'))
+    meta = json.loads((tmp_path / 'cone.json').read_text())
+    assert (tmp_path / 'cone_key.png').stat().st_size > 1000
+    k = meta['key']
+    assert 0 <= k['left'] < 1 and 0 <= k['top'] < 1 and k['left'] + k['width'] <= 1.01
+    assert dict(info['panel_fit'])['key']
+
+
+def near_edge_grid(shallow_edge=False):
+    """A small island close to the east edge of a 100 m grid; the water is at the 20 m floor by the edge."""
+    xs = np.arange(100.0) - 50
+    X, Z = np.meshgrid(xs, xs)
+    r = np.hypot(X - 25, Z)
+    Y = np.where(r < 10, 10 - r, -np.minimum(2.0 * (r - 10), 20.0)).astype(np.float32)
+    if shallow_edge:
+        Y[:, -3:] = -9.0
+    return dict(xs=xs, zs=xs.copy(), Y=Y, polys=(None, None, None), res=1.0, items=[], veg=None)
+
+
+def test_margin_extends_into_open_sea_past_the_data():
+    g = near_edge_grid()
+    fr = crop_frame(g, Style(margin_frac=0.5, margin_min_m=0))
+    assert fr.xs[-1] > g['xs'][-1]                  # the grid ends too soon: the margin continues as open sea
+    assert fr.nan[:, -1].all()                      # ...drawn as "no data" at the floor colour, so there is no seam
+
+
+def test_no_margin_is_invented_next_to_a_shallow_data_edge():
+    fr = crop_frame(near_edge_grid(shallow_edge=True), Style(margin_frac=0.5, margin_min_m=0))
+    assert fr.xs[-1] == pytest.approx(49.0)         # the data ends in shallow water: the chart stops there
