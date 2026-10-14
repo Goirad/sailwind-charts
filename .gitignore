@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# generated charts (the validated set is committed deliberately, under docs/ or charts/)
+review/
+charts5k*/

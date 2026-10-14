@@ -44,7 +44,7 @@ The root is a GameObject called **`_shifting world`** (a *floating origin*: the 
 - `N` is the **island number** (1–42). It also selects the island's scenery scene (`level<N>`, section 2.2).
 - The letter (A, E, M, or none) is a region code **(unverified meaning; presumably the three game regions)**.
 - **These are developer object names, not the names players see.** Example: `island 4 A (fish island)` is shown in
-  game as **Albacore Island** (town: Albacore Town). The user supplied such mappings; `DISPLAY_TITLES` in the script
+  game as **Albacore Island** (town: Albacore Town). The user supplied such mappings; `data/islands.toml`
   holds the ones we know. Do not assume the in-game name from the object name.
 - World positions are huge (±40,000–70,000 m from the origin) - float precision is poor there. **Always work in
   island-local coordinates** (subtract the island parent's position). The charts use +x = east, +z = north (assumed;
@@ -91,7 +91,7 @@ scene additively when the player gets near. Consequences:
   renderers are *saved disabled* (Neverdin: 1,030 of 1,156): the original pieces are kept but the combined mesh is what is
   drawn. **Inference** from the object layout, not from reading the script. Consequence for charts: these `New Game Object`
   meshes are **not land** (they once looked like it). By default the individual, named originals give structure footprints;
-  `render --scenery` instead adds the combined meshes by material category (buildings/furniture, trees, bushes, rocks).
+  the scenery option (on by default; `--no-scenery` turns it off) instead adds the combined meshes by material category (buildings/furniture, trees, bushes, rocks).
 - Nested islands have no scene; numbering is by object name, so `island 4 8` must *not* be mistaken for island 4.
 
 ---------------------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ two frames, so a Terrain is on layer 14 only at start-up.
    these in; once Terrain was right they were unnecessary and sometimes harmful. **Ignore inactive objects.**
 5. **Names lie.** `mountain_shipyard` is a mountain, not a structure; a lighthouse is built from generic colliders called
    `Cube` / `Cylinder_00n` (Oasis); `building` can be a whole academy; `Plane` can be a 3 km sea sheet. Classification
-   in the script is by name + size and has per-island quirks (`ISLAND_QUIRKS`). Review new islands visually.
+   in the script is by name + size and has per-island quirks (`quirks` in `data/islands.toml`). Review new islands visually.
 6. **Scenery scenes carry far-away strays** (e.g. Nightcall's `gda_building_*` 36 km away). Items further than 2.5 km
    from the island origin are dropped.
 7. **Drydock / ramps are part of "structure" meshes.** Gold Rock's drydock floor is inside the mesh `arab_shipyard`; only
@@ -174,20 +174,21 @@ two frames, so a Terrain is on layer 14 only at start-up.
 
 ---------------------------------------------------------------------------------------------------
 
-## 5. How the chart pipeline maps onto this (`sailwind_charts.py`)
+## 5. How the chart pipeline maps onto this (package `sailwind_charts/`)
 
 1. **Discover** island objects in `level24` (name starts with `island`, not `island_`, has children).
-2. **Collect geometry** of the subtree (+ the scene `level<N>` for top-level islands): Terrains (position-only rule),
+2. **Collect geometry** (`gamedata.py`) of the subtree (+ the scene `level<N>` for top-level islands): Terrains (position-only rule),
    meshes that are on layer 14, *or* solid and ≥ 20 m wide, *or* structure-named, minus excluded names.
-3. **Classify** meshes as ground or structure (name rules, size rules, quirks).
-4. **Rasterise** ground (top-down maximum height) at 0.5 m (coarser for very large islands, ≤ 5000 cells per side);
+3. **Classify** (`classify.py`) meshes as ground or structure (name rules, size rules, quirks).
+4. **Rasterise** (`grid.py`) ground (top-down maximum height) at 0.5 m (coarser for very large islands, ≤ 5000 cells per side);
    structures become **vector footprints** (above water / submerged / dock poles).
-5. **Render**: depth bands (0–2, 2–5 flat; 5–10 gradient), contours (1 m & 5 m depth, 10 m land), hillshade, red
-   structures, auto-placed title / scale bar / north arrow / key. Crop = 10 m shelf edge ∪ all structures.
+5. **Render** (`render.py`): depth bands (0–2, 2–5 flat; 5–10 gradient; below 10 m darkening to the 20 m terrain floor), contours
+   (1 m & 5 m depth, 5 m below 10 m, 10 m land), hillshade, red structures, auto-placed title / scale bar / north arrow / key.
+   Crop = the 10 m shelf (without flat depth-cache planes) ∪ all structures, plus a margin.
 
 ## 6. Known unknowns
 - Which `island A new*` / `island 4 8` style objects are live in the game, and whether Mirage Mountain's peak is
-  `island A new2` (see `ISLAND_NOTES.md`).
+  `island A new2` (see the notes in `data/islands.toml`).
 - The exact meaning of region letters; which Lagoon pieces belong together.
 - Whether the `_mesh combiner` scripts (editor-time baking vs runtime) change anything about which scenery is visible.
 - Runtime-only effects (tides, wave attenuation by the depth cache, `IslandHorizon` sinking) are not in the data.

@@ -1,0 +1,352 @@
+{
+ "island 1 A (gold rock)": {
+  "active": true,
+  "children": 110,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 10 E (sanctuary)": {
+  "active": true,
+  "children": 13,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 11 E (crab beach)": {
+  "active": true,
+  "children": 12,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 12 E (New Port)": {
+  "active": true,
+  "children": 27,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 13 E (Sage Hills)": {
+  "active": true,
+  "children": 37,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 14 M (Nightcall)": {
+  "active": false,
+  "children": 37,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 15 M (Fort)": {
+  "active": true,
+  "children": 48,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 16 M (Sunspire)": {
+  "active": true,
+  "children": 18,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 17 M (Mount Malefic)": {
+  "active": true,
+  "children": 15,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 18 M (HappyBay)": {
+  "active": true,
+  "children": 12,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 19 M (Eastwind)": {
+  "active": true,
+  "children": 11,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 2 A (AlNilem)": {
+  "active": true,
+  "children": 28,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 20 A (Oasis)": {
+  "active": true,
+  "children": 15,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 21 M (Siren Song)": {
+  "active": true,
+  "children": 12,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 22 E (Serpent Isle)": {
+  "active": true,
+  "children": 11,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 23 M oracle": {
+  "active": true,
+  "children": 3,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 25 (chronos)": {
+  "active": true,
+  "children": 12,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 26 Lagoon Temple": {
+  "active": true,
+  "children": 25,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 26 lagoon parent terrain (-1)": {
+  "active": true,
+  "children": 13,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 0
+ },
+ "island 27 Lagoon Shipyard": {
+  "active": true,
+  "children": 31,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 28 Lagoon Senna": {
+  "active": true,
+  "children": 10,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 29 Lagoon Onna": {
+  "active": true,
+  "children": 8,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 3 A (Neverdin)": {
+  "active": true,
+  "children": 21,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 30 rock of despair": {
+  "active": true,
+  "children": 2,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 0
+ },
+ "island 31 Lagoon Fisherman": {
+  "active": true,
+  "children": 1,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 0
+ },
+ "island 32 A (hideout)": {
+  "active": true,
+  "children": 7,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 33 M cave church": {
+  "active": true,
+  "children": 96,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 34 M monastery": {
+  "active": true,
+  "children": 9,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 35 M valley": {
+  "active": true,
+  "children": 14,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 36": {
+  "active": true,
+  "children": 5,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 37 E (swamp)": {
+  "active": true,
+  "children": 9,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 0
+ },
+ "island 38 E (jungle)": {
+  "active": true,
+  "children": 10,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 39 E (onsen)": {
+  "active": true,
+  "children": 6,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 0
+ },
+ "island 4 8": {
+  "active": true,
+  "children": 7,
+  "nested": true,
+  "parent": "island 35 M valley",
+  "terrains": 0
+ },
+ "island 4 A (fish island)": {
+  "active": true,
+  "children": 14,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 40 (coffee)": {
+  "active": true,
+  "children": 11,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 41 (mirage mountain)": {
+  "active": true,
+  "children": 12,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 42": {
+  "active": true,
+  "children": 4,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 5 A (clear mind)": {
+  "active": true,
+  "children": 5,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 6 A  (lion fang)": {
+  "active": true,
+  "children": 5,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 7 A (alchemist's island)": {
+  "active": true,
+  "children": 13,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 8 A (academy)": {
+  "active": true,
+  "children": 12,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 9 E (dragon cliffs)": {
+  "active": true,
+  "children": 59,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 1
+ },
+ "island 9 E scenery backup": {
+  "active": false,
+  "children": 189,
+  "nested": false,
+  "parent": "_shifting world",
+  "terrains": 0
+ },
+ "island A new1": {
+  "active": true,
+  "children": 48,
+  "nested": true,
+  "parent": "island 40 (coffee)",
+  "terrains": 0
+ },
+ "island A new2": {
+  "active": true,
+  "children": 3,
+  "nested": true,
+  "parent": "island 41 (mirage mountain)",
+  "terrains": 0
+ },
+ "island E new3": {
+  "active": true,
+  "children": 11,
+  "nested": true,
+  "parent": "island 39 E (onsen)",
+  "terrains": 0
+ },
+ "island cave church final terrain": {
+  "active": true,
+  "children": 9,
+  "nested": true,
+  "parent": "island 33 M cave church",
+  "terrains": 0
+ },
+ "island cave church town": {
+  "active": true,
+  "children": 4,
+  "nested": true,
+  "parent": "island 33 M cave church",
+  "terrains": 0
+ },
+ "island4-7": {
+  "active": true,
+  "children": 81,
+  "nested": true,
+  "parent": "island 33 M cave church",
+  "terrains": 0
+ }
+}

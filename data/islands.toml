@@ -1,0 +1,254 @@
+# The island catalogue: real (in-game) names, status, per-island quirks, composites.  One table per island, keyed by the
+# developer object name from the game data (see `python -I charts.py list`).
+#
+#   name    title and file name of the chart (blank = the object name)
+#   mod     true = added by a mod (only exists with --mods)
+#   skip    true = leave out of `render --all` (leftovers, inactive objects, composite members)
+#   status  validated (checked against the game) | checked (looked at closely) | doubtful (known or suspected problem)
+#   notes   free text: what was learned, what is open
+#   quirks  per-island overrides, always scoped to one island (they would damage other maps):
+#             floor_split         [mesh names]  waterline-crossing triangles near the footprint are ground (dry dock floors)
+#             extra_struct_regex  "regex"       object names to force into structures (L24 solid meshes only)
+#             extra_land          [names]       objects to force into the ground even without a collider
+#             land_names          [names]       meshes that the name rules would call structures but are ground
+#             nodata_is_water     true          enclosed cells without data are open water, not grey "no data"
+#
+# Composites are islands that are one place in the game and are charted as ONE map, in their true relative positions.
+
+[islands."island 1 A (gold rock)"]
+name = "Gold Rock City"
+status = "validated"
+notes = "Quirk floor_split: the dry dock floor/ramp inside mesh arab_shipyard is ground, not structure (the bay was hidden before). The quay slab may include \"dock col\" collision proxies (judged right). The Terrain has its own scale 2.0, so it was never hit by the Terrain-placement bug. The mesh skirts form flat depth planes (9.7 m and 9.0 m) that must not set the crop."
+[islands."island 1 A (gold rock)".quirks]
+floor_split = ["L24:arab_shipyard"]
+
+[islands."island 10 E (sanctuary)"]
+name = "Sanctuary"
+status = "checked"
+notes = "The pier reaches past the 10 m shelf: the border grows to include structures."
+
+[islands."island 11 E (crab beach)"]
+name = "Crab Beach"
+
+[islands."island 12 E (New Port)"]
+name = "New Port"
+status = "doubtful"
+notes = "A flat fan-shaped area on the north island appeared with switched-off base meshes (since excluded); confirm against the game."
+
+[islands."island 13 E (Sage Hills)"]
+name = "Sage Hills"
+status = "checked"
+notes = "Two islands, channel with the dock village."
+
+[islands."island 14 M (Nightcall)"]
+name = "Nightcall"
+skip = true
+status = "checked"
+notes = "Parent object saved inactive (handled). Spiral channel and walled town. Inactive in the game files, so not charted."
+
+[islands."island 15 M (Fort)"]
+name = "Fort Aestrin"
+
+[islands."island 16 M (Sunspire)"]
+name = "Sunspire"
+
+[islands."island 17 M (Mount Malefic)"]
+name = "Mount Malefic"
+
+[islands."island 18 M (HappyBay)"]
+name = "Happy Bay"
+
+[islands."island 19 M (Eastwind)"]
+name = "Eastwind"
+
+[islands."island 2 A (AlNilem)"]
+name = "Al'Nilem"
+status = "checked"
+notes = "Ring island around a caldera lake."
+
+[islands."island 20 A (Oasis)"]
+name = "Oasis"
+status = "checked"
+notes = "Quirk extra_struct_regex: the lighthouse on the small islet is generic Cube/Cylinder colliders."
+[islands."island 20 A (Oasis)".quirks]
+extra_struct_regex = "^(Cube|Cylinder)(_\\d+)?$"
+
+[islands."island 21 M (Siren Song)"]
+name = "Siren Song"
+
+[islands."island 22 E (Serpent Isle)"]
+name = "Serpent Isle"
+status = "checked"
+notes = "Parent rotated -90 deg about X; its 1200 m Terrain is real land (3 low islands, pier at the narrow waist)."
+
+[islands."island 23 M oracle"]
+name = "Oracle"
+
+[islands."island 25 (chronos)"]
+name = "Chronos"
+
+[islands."island 26 Lagoon Temple"]
+name = ""
+skip = true
+status = "checked"
+
+[islands."island 26 lagoon parent terrain (-1)"]
+name = ""
+skip = true
+status = "checked"
+notes = "Large (4x6 km) terrain-style parent of the Lagoon pieces; its flat floor is 20 m."
+
+[islands."island 27 Lagoon Shipyard"]
+name = ""
+skip = true
+status = "checked"
+notes = "Pier/buildings float in open water NW of the mountain island, away from land: something else is misplaced or missing. mountain_shipyard was once mistaken for a structure (now excluded by LAND_NAME_RE)."
+
+[islands."island 28 Lagoon Senna"]
+name = ""
+skip = true
+status = "checked"
+
+[islands."island 29 Lagoon Onna"]
+name = ""
+skip = true
+status = "checked"
+notes = "Mesh skirt down to 76 m (clamped to the 20 m floor when drawn)."
+
+[islands."island 3 A (Neverdin)"]
+name = "Neverdin"
+status = "checked"
+notes = "Was the poster child for the Terrain-placement bug (displaced shelf)."
+
+[islands."island 30 rock of despair"]
+name = "Rock of Despair"
+
+[islands."island 31 Lagoon Fisherman"]
+name = ""
+skip = true
+status = "checked"
+
+[islands."island 32 A (hideout)"]
+name = "Eleann Island"
+
+[islands."island 33 M cave church"]
+name = "Firefly Grotto"
+
+[islands."island 34 M monastery"]
+name = "Aestra Abbey"
+
+[islands."island 35 M valley"]
+name = "Fey Valley"
+
+[islands."island 36"]
+name = "Bone Isle"
+
+[islands."island 37 E (swamp)"]
+name = "Dead Cove"
+
+[islands."island 38 E (jungle)"]
+name = "Turtle Island"
+
+[islands."island 39 E (onsen)"]
+name = "Pondering Peak"
+
+[islands."island 4 8"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Nested under Fey Valley; no scenery scene; unclear whether live. Its chart shows a grey lake patch (hole in the data)."
+
+[islands."island 4 A (fish island)"]
+name = "Albacore Island"
+status = "validated"
+notes = "Checked against a bird's-eye screenshot. Two islands with a curved channel, pier from the north island into the channel. Land is Terrain only (parent scale 0.5, yaw -120). This is the selftest island."
+
+[islands."island 40 (coffee)"]
+name = "Old Ankh Town"
+status = "checked"
+notes = "Two hill masses split by a channel, harbour with pier, a village of ~20 building blocks on small islets in the south. A thin straight line across the left hill (ridge/wall or mesh seam?) is unexplained."
+
+[islands."island 41 (mirage mountain)"]
+name = "Mirage Mountain"
+status = "doubtful"
+notes = "The chart shows a low island with no peak. The nested \"island A new2\" holds two mountain meshes (164x140 m, 17-81 m high, no colliders) offset +18 m inside: possibly the real peak, not merged."
+
+[islands."island 42"]
+name = "Saffron"
+
+[islands."island 5 A (clear mind)"]
+name = "Isle of Clear Mind"
+
+[islands."island 6 A  (lion fang)"]
+name = "Lion's Fang"
+
+[islands."island 67 Bottleneck"]
+name = "Bottleneck"
+mod = true
+status = "checked"
+notes = "Mod island (Better Ports); only present with --mods. Ring of five islands around a deep pool; port with a T-shaped pier on the southern island. One benign mesh-decode message (a built-in Unity primitive)."
+
+[islands."island 7 A (alchemist's island)"]
+name = "Alchemist's Island"
+
+[islands."island 8 A (academy)"]
+name = "Al'Ankh Academy"
+status = "checked"
+notes = "Quirk land_names: mesh Cube_001 (30x37 m, rounded) is a rock outcrop, not a small building. The large red area is a mesh literally named \"building\" (probably the academy itself); unverified. The smallest island: needs the fine raster."
+[islands."island 8 A (academy)".quirks]
+land_names = ["Cube_001"]
+
+[islands."island 9 E (dragon cliffs)"]
+name = "Dragon Cliffs"
+status = "checked"
+notes = "Quirk nodata_is_water: the lagoon between the hills lies outside the Terrain and every mesh, i.e. open water, not \"no data\"."
+[islands."island 9 E (dragon cliffs)".quirks]
+nodata_is_water = true
+
+[islands."island 9 E scenery backup"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Inactive backup of the Dragon Cliffs scenery: buildings only, no land."
+
+[islands."island A new1"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Nested under Old Ankh Town; no scenery scene; unclear whether live."
+
+[islands."island A new2"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Two mountain meshes nested under Mirage Mountain (see there). Rendered on its own only through the extra_land quirk."
+[islands."island A new2".quirks]
+extra_land = ["mountain", "mountain_001"]
+
+[islands."island E new3"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Nested under Pondering Peak; no scenery scene; unclear whether live."
+
+[islands."island cave church final terrain"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Nested under Firefly Grotto; unclear whether live."
+
+[islands."island cave church town"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Nested under Firefly Grotto; odd flat layout."
+
+[islands."island4-7"]
+name = ""
+skip = true
+status = "doubtful"
+notes = "Nested under Firefly Grotto; only building meshes."
+
+[composites."Fire Fish Lagoon"]
+members = ["island 26 lagoon parent terrain (-1)", "island 26 Lagoon Temple", "island 27 Lagoon Shipyard", "island 28 Lagoon Senna", "island 29 Lagoon Onna", "island 31 Lagoon Fisherman"]
+notes = "The six Lagoon pieces lie within ~4 km (scale 1, yaw 0; the parent terrain has yaw 180) and form a ring around open water. Rock of Despair (island 30) is 40 km away and not part of it. Heights combine by maximum, polygons are unioned."
