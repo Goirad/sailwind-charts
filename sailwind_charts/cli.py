@@ -22,16 +22,22 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAUNCHER = os.path.join(HERE, 'charts.py')
 REFERENCE_DIR = os.path.join(HERE, 'reference')
 SELFTEST_ISLAND = 'island 4 A (fish island)'     # shown in-game as "Albacore Island"
-SELFTEST_STYLE = Style(size_px=2000, quality=80, key='none')
+SELFTEST_STYLE = Style(size_px=2000, quality=80, key='none')      # fixed size and quality: the reference image pins them
 
 
 # --------------------------------------------------------------------------------------------------
 # Shared helpers
 # --------------------------------------------------------------------------------------------------
-def _style(args, quirks=None):
-    return Style(size_px=args.size, quality=args.quality, key=args.key, margin_frac=args.margin,
-                 key_px=args.key_width, max_depth_m=args.max_depth,
-                 nodata_is_water=bool((quirks or {}).get('nodata_is_water')))
+def _style(args, quirks=None, defaults=None):
+    """The render Style: library defaults, then `defaults` (e.g. a composite's own max_px), then what the command line set."""
+    kw = dict(defaults or {})
+    kw.update(quality=args.quality, key=args.key, margin_frac=args.margin, max_depth_m=args.max_depth,
+              nodata_is_water=bool((quirks or {}).get('nodata_is_water')))
+    for field, value in (('size_px', args.size), ('px_per_m', args.px_per_m), ('min_px', args.min_px), ('max_px', args.max_px),
+                         ('key_px', args.key_width)):
+        if value is not None:
+            kw[field] = value
+    return Style(**kw)
 
 
 def _resolve(gd, catalog, name):
@@ -102,9 +108,9 @@ def cmd_manifest(args, gd, catalog):
 # --------------------------------------------------------------------------------------------------
 # render / compose
 # --------------------------------------------------------------------------------------------------
-def _build(args, gd, key, catalog):
+def _build(args, gd, key, catalog, max_cells=None):
     return build_grid(gd, gd.find(key), quirks=catalog.island(key).quirks, scenery=not args.no_scenery,
-                      max_cells=args.max_cells, adaptive_res=not args.fixed_res)
+                      max_cells=args.max_cells or max_cells or GRID_MAX_CELLS, adaptive_res=not args.fixed_res)
 
 
 def _render_one(args, gd, catalog, key):
@@ -125,10 +131,12 @@ def _render_one(args, gd, catalog, key):
 
 def _flags(args):
     """The options a worker process needs to render the same way as this one."""
-    return (['--out', args.out, '--size', str(args.size), '--quality', str(args.quality), '--max-cells', str(args.max_cells),
-             '--margin', str(args.margin), '--key-width', str(args.key_width), '--max-depth', str(args.max_depth)]
-            + ['--key', args.key] + (['--no-scenery'] if args.no_scenery else [])
-            + (['--fixed-res'] if args.fixed_res else []))
+    explicit = [(flag, value) for flag, value in (('--size', args.size), ('--px-per-m', args.px_per_m), ('--min-px', args.min_px),
+                                                  ('--max-px', args.max_px), ('--key-width', args.key_width), ('--max-cells', args.max_cells))
+                if value is not None]
+    return (['--out', args.out, '--quality', str(args.quality), '--margin', str(args.margin), '--max-depth', str(args.max_depth),
+             '--key', args.key] + [x for flag, value in explicit for x in (flag, str(value))]
+            + (['--no-scenery'] if args.no_scenery else []) + (['--fixed-res'] if args.fixed_res else []))
 
 
 def cmd_render(args, gd, catalog):
@@ -166,25 +174,26 @@ def cmd_compose(args, gd, catalog):
     if args.group:
         if args.group not in catalog.composites:
             raise SystemExit(f'unknown composite {args.group!r}; known: {", ".join(catalog.composites)}')
-        members, title = list(catalog.composites[args.group].members), args.title or args.group
+        comp = catalog.composites[args.group]
+        members, title = list(comp.members), args.title or args.group
     else:
         if not args.title:
             raise SystemExit('--title is required without --group')
-        members, title = [_resolve(gd, catalog, n) for n in args.names], args.title
+        members, title, comp = [_resolve(gd, catalog, n) for n in args.names], args.title, None
     args.fixed_res = True        # a composite has its own resolution (--res); the members keep their own
     parts = []
     for key in members:
-        grid = _build(args, gd, key, catalog)
+        grid = _build(args, gd, key, catalog, max_cells=comp.max_cells if comp else None)
         if grid is None:
             log('skip (no geometry):', key); continue
         M = _trs(_tf(gd.find(key)['go']))
         parts.append((grid, (M[0, 3], M[2, 3])))
         log(f'  {key}: grid {grid["Y"].shape} res {grid["res"]} origin ({M[0, 3]:.0f}, {M[2, 3]:.0f})')
-    res = max(max(g['res'] for g, _ in parts), args.res)
+    res = max(max(g['res'] for g, _ in parts), args.res or (comp.res if comp else 1.0))
     grid = compose_grids(parts, res)
     os.makedirs(args.out, exist_ok=True)
     out = os.path.join(args.out, slug(title) + '.jpg')
-    info = render_chart(grid, title, out, _style(args))
+    info = render_chart(grid, title, out, _style(args, defaults=dict(max_px=comp.max_px) if comp and comp.max_px else None))
     log(f'OK composite {title!r} of {len(parts)} islands -> {out} grid {grid["Y"].shape} res {res} fit={all(ok for _, ok in info["panel_fit"])}')
 
 
@@ -252,19 +261,22 @@ def cmd_sheet(args, gd, catalog):
 # --------------------------------------------------------------------------------------------------
 def _add_render_options(p):
     p.add_argument('--out', default='charts')
-    p.add_argument('--size', type=int, default=2000, help='long side of the image in px (default %(default)s)')
-    p.add_argument('--quality', type=int, default=80, help='JPEG quality (default %(default)s)')
+    p.add_argument('--size', type=int, help='fixed long side of the image in px (default: from the map extent, see --px-per-m)')
+    p.add_argument('--px-per-m', type=float, help='pixels per metre of map (default %g)' % Style.px_per_m)
+    p.add_argument('--min-px', type=int, help='smallest long side when sizing by extent (default %d)' % Style.min_px)
+    p.add_argument('--max-px', type=int, help='largest long side when sizing by extent (default %d; the Lagoon has its own)' % Style.max_px)
+    p.add_argument('--quality', type=int, default=Style.quality, help='JPEG quality (default %(default)s)')
     p.add_argument('--key', choices=('baked', 'separate', 'none'), default=Style.key,
                    help="key panel: 'baked' into the image, 'separate' (the image reserves its corner; the key is written as NAME_key.png "
                         "with placement in NAME.json, for the site) or 'none' (default %(default)s)")
     p.add_argument('--margin', type=float, default=Style.margin_frac,
                    help='sea buffer around the chart as a fraction of its long side, at least %g m (default %%(default)s; 0 = none)' % Style.margin_min_m)
-    p.add_argument('--key-width', type=int, default=Style.key_px, help='key width in final pixels (default %(default)s; 0 = full size)')
+    p.add_argument('--key-width', type=int, help='key width in final pixels (default: 10%% of the long side, 350-500; 0 = full size)')
     p.add_argument('--max-depth', type=float, default=Style.max_depth_m, help='draw water down to this depth in m (default %(default)s, must exceed 10)')
     p.add_argument('--no-scenery', action='store_true', help="skip the scenery scenes' baked trees, bushes, fences, rocks")
     p.add_argument('--fixed-res', action='store_true', help='always use the 0.5 m raster (default: finer for small islands)')
-    p.add_argument('--max-cells', type=int, default=GRID_MAX_CELLS,
-                   help='max raster cells per side; coarser raster for huge islands (default %(default)d; ~8000 keeps 0.5 m at 10k px, needs several GB)')
+    p.add_argument('--max-cells', type=int,
+                   help='max raster cells per side; coarser raster for huge islands (default %d; a composite can set its own)' % GRID_MAX_CELLS)
 
 
 def build_parser():
@@ -284,7 +296,7 @@ def build_parser():
     _add_render_options(p)
     p = sub.add_parser('compose', help='render several islands as one map in their true relative positions')
     p.add_argument('names', nargs='*'); p.add_argument('--title'); p.add_argument('--group', help='a composite from the catalogue')
-    p.add_argument('--res', type=float, default=1.0, help='composite raster resolution in m (default %(default)s)')
+    p.add_argument('--res', type=float, help='composite raster cell size in m (default: the composite\'s own, else 1.0)')
     _add_render_options(p)
     p = sub.add_parser('site', help='build the static site from charts rendered with --key separate')
     p.add_argument('--charts', default='charts', help='folder with NAME.jpg, NAME_key.png, NAME.json (default %(default)s)')

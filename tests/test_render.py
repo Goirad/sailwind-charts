@@ -89,3 +89,14 @@ def test_margin_extends_into_open_sea_past_the_data():
 def test_no_margin_is_invented_next_to_a_shallow_data_edge():
     fr = crop_frame(near_edge_grid(shallow_edge=True), Style(margin_frac=0.5, margin_min_m=0))
     assert fr.xs[-1] == pytest.approx(49.0)         # the data ends in shallow water: the chart stops there
+
+
+def test_size_follows_the_extent_within_the_floor_and_cap():
+    from sailwind_charts.render import chart_size, key_width_px
+    fr = crop_frame(island_grid(), Style(margin_frac=0, margin_min_m=0))          # a ~160 m map
+    assert chart_size(fr, Style(px_per_m=4)) == 2000                              # 160 m x 4 px/m is below the floor
+    assert chart_size(fr, Style(px_per_m=20, min_px=100, max_px=5000)) == round(max(fr.width_m, fr.height_m) * 20)
+    assert chart_size(fr, Style(px_per_m=100, max_px=5000)) == 5000               # ...and a high density hits the cap
+    assert chart_size(fr, Style(size_px=777)) == 777                              # a fixed size wins
+    assert key_width_px(2000, Style()) == 350 and key_width_px(5000, Style()) == 500 and key_width_px(10000, Style()) == 500
+    assert key_width_px(2000, Style(key_px=0)) == 0

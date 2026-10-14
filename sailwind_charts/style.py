@@ -23,11 +23,14 @@ W_FINE, W_MED, W_LAND, W_SHORE = 2.5, 5, 3, 6
 @dataclass(frozen=True)
 class Style:
     """How a chart is rendered.  Sizes are in final pixels unless stated otherwise."""
-    size_px: int = 2000             # long side of the image (the layout is designed for 10,000 px and scaled)
-    quality: int = 80               # JPEG quality
+    size_px: int = 0                # fixed long side of the image in px; 0 = from the map's extent (px_per_m, within min_px..max_px)
+    px_per_m: float = 4.0           # pixels per metre of map: about the data's own cell size (0.1-0.5 m), more would only interpolate
+    min_px: int = 2000              # ...but small islands never get a smaller image than this
+    max_px: int = 5000              # ...and big ones never a larger one
+    quality: int = 85               # JPEG quality
     key: str = 'baked'              # 'baked' (in the image) | 'separate' (reserved, written as <name>_key.png + <name>.json) | 'none'
     margin_frac: float = 0.05       # sea buffer around the shelf crop: this fraction of its long side...
     margin_min_m: float = 15.0      # ...but at least this many metres (0 / 0 = none); only real grid data is used
-    key_px: int = 500               # key panel width (0 = full designed size); it is never enlarged
+    key_px: int | None = None       # key panel width in final px; None = 10% of the long side, between 350 and 500; 0 = full designed size
     max_depth_m: float = 20.0       # water is drawn down to this depth (the game's flat terrain floor); must exceed 10
     nodata_is_water: bool = False   # enclosed cells without data are open water, not grey "no data" (per-island quirk)

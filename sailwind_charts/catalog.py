@@ -28,6 +28,9 @@ class Composite:
     members: tuple
     notes: str = ''
     region: str = ''
+    res: float = 1.0          # raster cell size of the combined map in m
+    max_cells: int = 0        # per-member raster cells per side (0 = the default); raise it so big members keep `res`
+    max_px: int = 0           # image size cap for this map (0 = the default)
 
 
 class Catalog:
@@ -44,7 +47,7 @@ class Catalog:
         with open(path, 'rb') as f:
             raw = tomllib.load(f)
         islands = {k: Island(key=k, **v) for k, v in raw.get('islands', {}).items()}
-        composites = {t: Composite(title=t, members=tuple(v['members']), notes=v.get('notes', ''), region=v.get('region', '')) for t, v in raw.get('composites', {}).items()}
+        composites = {t: Composite(title=t, members=tuple(v['members']), **{k: v[k] for k in ('notes', 'region', 'res', 'max_cells', 'max_px') if k in v}) for t, v in raw.get('composites', {}).items()}
         return cls(islands, composites, raw.get('site', {}))
 
     def island(self, key):

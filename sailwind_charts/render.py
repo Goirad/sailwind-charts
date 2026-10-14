@@ -342,18 +342,18 @@ class KeyPanel:
     """The key.  Its size is chosen so it ends up about `style.key_px` final pixels wide."""
     name, corner = 'key', 'BR'
 
-    def __init__(self, cv, fr, style, grid, final_scale):
+    def __init__(self, cv, fr, key_px, grid, max_depth_m, final_scale):
         S = grid['polys'][1]
         sel = fr.depth[(fr.depth > 0) & (fr.depth < SHELF_EDGE_DEPTH_M) & ~fr.nan]
         values, counts = np.unique(np.round(sel, 1), return_counts=True)
         self.flat_depth = values[counts.argmax()] if (sel.size and counts.max() > 0.3 * len(sel)) else None
-        self.max_depth = style.max_depth_m
+        self.max_depth = max_depth_m
         self.has_nodata = bool(fr.nodata.any())
         self.has_sub = S is not None and not S.is_empty
         self.cv = cv
         self.scale = 1.0
-        if style.key_px:           # shrink the key so it ends up about key_px final pixels wide
-            self.scale = min(1.0, style.key_px / (final_scale * self._layout(1.0)[1]))
+        if key_px:           # shrink the key so it ends up about key_px final pixels wide
+            self.scale = min(1.0, key_px / (final_scale * self._layout(1.0)[1]))
         self.rows, self.w, self.h = self._layout(self.scale)
 
     def _rows(self, ks):
@@ -495,15 +495,27 @@ def _write_separate_key(cv, key, xy, base, title, scale):
     return ok
 
 
+def chart_size(fr, style):
+    """Long side of the image in px: fixed by the style, or the map's extent times px_per_m within [min_px, max_px]."""
+    if style.size_px:
+        return style.size_px
+    return round(min(style.max_px, max(style.min_px, max(fr.width_m, fr.height_m) * style.px_per_m)))
+
+
+def key_width_px(size, style):
+    return style.key_px if style.key_px is not None else min(500, max(350, round(0.10 * size)))
+
+
 def render_chart(grid, title, out_path, style=Style()):
     """Render a height grid to an image.  Returns {panel_fit, canvas_design_px, crop_cells} for checking."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    scale = style.size_px / LAYOUT_PX
-    lwpt = PT * max(1.0, 1.0 / (scale * 2.0))          # line widths get a boost at small sizes so they stay visible
     fr = crop_frame(grid, style)
+    size = chart_size(fr, style)
+    scale = size / LAYOUT_PX
+    lwpt = PT * max(1.0, 1.0 / (scale * 2.0))          # line widths get a boost at small sizes so they stay visible
 
     fig = plt.figure(figsize=(fr.wpx / 100, fr.hpx / 100), dpi=100)
     ax = fig.add_axes([0, 0, 1, 1])
@@ -515,7 +527,7 @@ def render_chart(grid, title, out_path, style=Style()):
 
     cv = Canvas(fig, ax, fr, lwpt)
     title_panel, north, scale_bar = TitlePanel(cv, title), NorthArrow(), ScaleBar(cv)
-    panels = [north] + ([KeyPanel(cv, fr, style, grid, scale)] if style.key != 'none' else []) + [scale_bar, title_panel]
+    panels = [north] + ([KeyPanel(cv, fr, key_width_px(size, style), grid, style.max_depth_m, scale)] if style.key != 'none' else []) + [scale_bar, title_panel]
     placement = _place_panels(cv, panels)
     # draw in a fixed order (title, north, scale, key): later panels sit on top; a separate key is only reserved here
     fit = []
@@ -531,4 +543,4 @@ def render_chart(grid, title, out_path, style=Style()):
     if style.key == 'separate':
         key = next(p for p in panels if p.name == 'key')
         fit.append(('key', _write_separate_key(cv, key, placement['key'][1], os.path.splitext(out_path)[0], title, scale)))
-    return dict(panel_fit=fit, canvas_design_px=(fr.wpx, fr.hpx), crop_cells=fr.Y.shape)
+    return dict(panel_fit=fit, canvas_design_px=(fr.wpx, fr.hpx), crop_cells=fr.Y.shape, size_px=size)

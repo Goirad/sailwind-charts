@@ -290,5 +290,9 @@ notes = "Nested under Firefly Grotto; only building meshes."
 
 [composites."Fire Fish Lagoon"]
 region = "Fire Fish Lagoon"
+# The ring is 5.3 km across: a finer raster (0.5 m, the resolution of the island pieces) and a larger image keep the pieces' detail.
+res = 0.5
+max_cells = 14000
+max_px = 10000
 members = ["island 26 lagoon parent terrain (-1)", "island 26 Lagoon Temple", "island 27 Lagoon Shipyard", "island 28 Lagoon Senna", "island 29 Lagoon Onna", "island 31 Lagoon Fisherman"]
 notes = "The six Lagoon pieces lie within ~4 km (scale 1, yaw 0; the parent terrain has yaw 180) and form a ring around open water. Rock of Despair (island 30) is 40 km away and not part of it. Heights combine by maximum, polygons are unioned."
